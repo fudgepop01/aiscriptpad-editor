@@ -1,0 +1,56 @@
+name: aisp
+scopeName: source.aisp
+fileTypes:
+  - as
+  - atkd
+  - aipd
+patterns:
+  - include: '#keywords'
+  - include: '#numbers'
+  - include: '#variables'
+  - include: '#comments'
+  - include: '#strings'
+repository:
+  numbers:
+    patterns:
+      - match: '(\b0x[0-9a-fA-F]+|\b\d+)'
+        name: constant.numeric
+  keywords:
+    patterns:
+      - match: '\b(?:true|false)\b'
+        name: keyword.other
+      - match: '\b(?:if|elif|endif|else)\b|^#include .+$'
+        name: keyword.control
+      - match: '\b(?:unk|id|str)\b'
+        name: support.type
+      - match: '\b(label)\s*([\w\d_]+)?'
+        captures:
+          '1': { name: keyword.other }
+          '2': { name: string.unquoted }
+  variables:
+    patterns:
+      - match: '\bvar(?:2[0-4]|1?[0-9])\b'
+        name: variable.other
+  strings:
+    patterns:
+      - begin: '"'
+        beginCaptures:
+          '0': { name: punctuation.definition.string.begin.ts }
+        end: '(")|((?:[^\\\n])$)'
+        endCaptures:
+          '1': { name: punctuation.definition.string.end.ts }
+          '2': { name: invalid.illegal.newline.ts }
+        name: string.quoted.double.ts
+  comments:
+    patterns:
+      - match: '((?://).*$)'
+        name: comment
+      - begin: '(\/\*)'
+        beginCaptures:
+          '1': { name: punctuation.definition.comment }
+        end: '(\*\/)'
+        endCaptures:
+          '1': { name: punctuation.definition.comment }
+        name: comment.block
+
+
