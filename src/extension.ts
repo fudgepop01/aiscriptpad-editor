@@ -4,6 +4,7 @@ import { generateHighlightProvider } from './generateHighlighting';
 import { HoverProvider } from './hoverProvider';
 import { DefinitionProvider } from './definitionProvider';
 import { CompletionProvider } from './completionProvider';
+import { Export, Compile } from './ExportCompile';
 
 const tokenTypes = ['function', 'type', 'parameter', 'variable'];
 const legend = new vscode.SemanticTokensLegend(tokenTypes);
@@ -14,11 +15,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	const definitionProvider = vscode.languages.registerDefinitionProvider('aisp', DefinitionProvider(includeData));
 	const completionProvider = vscode.languages.registerCompletionItemProvider('aisp', CompletionProvider(includeData));
 
+	const exportCommand = vscode.commands.registerCommand('aiscriptpad-editor.export', Export);
+	const compileCommand = vscode.commands.registerCommand('aiscriptpad-editor.compile', Compile);
+
+
 	context.subscriptions.push(
 		semanticTokensProvider,
 		hoverProvider,
 		definitionProvider,
-		completionProvider
+		completionProvider,
+		exportCommand,
+		compileCommand
 	);
 }
 

@@ -61,7 +61,7 @@
           </dict>
           <dict>
             <key>match</key>
-            <string>\b(?:if|elif|endif|else)\b|^#include .+$</string>
+            <string>\b(?:if|elif|endif|else)\b|^#include .+$|#let|#const</string>
             <key>name</key>
             <string>keyword.control</string>
           </dict>
@@ -96,7 +96,7 @@
         <array>
           <dict>
             <key>match</key>
-            <string>\bvar(?:2[0-4]|1?[0-9])\b</string>
+            <string>\bvar(?:2[0-1]|1?[0-9])\b</string>
             <key>name</key>
             <string>variable.other</string>
           </dict>

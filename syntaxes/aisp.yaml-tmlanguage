@@ -19,7 +19,7 @@ repository:
     patterns:
       - match: '\b(?:true|false)\b'
         name: keyword.other
-      - match: '\b(?:if|elif|endif|else)\b|^#include .+$'
+      - match: '\b(?:if|elif|endif|else)\b|^#include .+$|#let|#const|#macro|#endmacro'
         name: keyword.control
       - match: '\b(?:unk|id|str)\b'
         name: support.type
@@ -29,7 +29,7 @@ repository:
           '2': { name: string.unquoted }
   variables:
     patterns:
-      - match: '\bvar(?:2[0-4]|1?[0-9])\b'
+      - match: '\bvar(?:2[0-1]|1?[0-9])\b'
         name: variable.other
   strings:
     patterns:

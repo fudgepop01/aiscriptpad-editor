@@ -15,8 +15,11 @@ if (sep === '\\') {
   fullPath = fullPath.substring(fullPath.indexOf('/') + 1); //.replace(/\//g, "\\ ");
 }
 
+export const pathToIncludes = fullPath;
+
 const handleData = (lines: string[], callback: (line: string, doc: string) => any) => {
   let doc = '';
+  lines[0] = lines[0].substring(1);
   for (const line of lines) {
     if (line.startsWith('///')) {
       doc += line.substring(3) + '\n';
