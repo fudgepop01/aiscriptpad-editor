@@ -61,7 +61,7 @@
           </dict>
           <dict>
             <key>match</key>
-            <string>\b(?:if|elif|endif|else)\b|^#include .+$|#let|#const</string>
+            <string>\b(?:if|elif|endif|else)\b|^#include .+$|#let|#const|#macro|#endmacro|\b(?:strv?|color|hex)</string>
             <key>name</key>
             <string>keyword.control</string>
           </dict>

@@ -61,7 +61,7 @@ export const preprocess = async (path: string) => {
       return;
     }
     else if (line.trim().startsWith("#let")) {
-      const matches = line.trim().match(/#let\s+(?<alias>[a-zA-Z]+)\s*=\s*(?<variable>var[0-9]+)/);
+      const matches = line.trim().match(/#let\s+(?<alias>[a-zA-Z_]+)\s*=\s*(?<variable>var[0-9]+)/);
       if (!matches!.groups!.alias) {
         errors.push(`${errStart}let-variable must have a name`);
       }
@@ -74,7 +74,7 @@ export const preprocess = async (path: string) => {
       return;
     }
     else if (line.trim().startsWith("#const")) {
-      const matches = line.trim().match(/#const\s+(?<alias>[a-zA-Z]+)\s*=\s*(?<value>[0-9]+(?:\.[0-9]+)?)/);
+      const matches = line.trim().match(/#const\s+(?<alias>[a-zA-Z_]+)\s*=\s*(?<value>[0-9]+(?:\.[0-9]+)?)/);
       if (!matches!.groups!.alias) {
         errors.push(`${errStart}const must have a name`);
       }
@@ -111,6 +111,42 @@ export const preprocess = async (path: string) => {
     for (const [alias, value] of Object.entries(globals.constants)) {
       line = line.replace(new RegExp(`\\b${alias}\\b`, 'g'), value);
     }
+
+    line = line
+      .replace(/hex\(0x([a-fA-F0-9]+)\)/g, (_, m1) => {
+        return `${parseInt(m1, 16)}`;
+      })
+      // .replace(/color\((\d+),? (\d+),? (\d+),? (\d+)\)/g, (_, r: string, g: string, b: string, a: string) => {
+      //   let rOut = parseInt(r);
+      //   let bOut = parseInt(b);
+      //   let gOut = parseInt(g);
+      //   let aOut = parseInt(a);
+      //   if (rOut > 255 || bOut > 255 || gOut > 255 || aOut > 255) { return "COLOR_ERROR(should be 0-255)"; }
+      //   return `${(rOut << 24 | gOut << 16 | bOut << 8 | aOut) >>> 0}`;
+      // })
+      .replace(/color\(0x([a-fA-F0-9]{8})\)/g, (_, m1: string) => {
+        const hex = parseInt(m1, 16);
+        return `${(hex & 0xff000000) >>> 24} ${(hex & 0xff0000) >> 16} ${(hex & 0xff00) >> 8} ${hex & 0xff}`;
+      })
+      .replace(/str(v?)\("([\x00-\xFF]+)"\)/g, (_, vFlag: string, m1: string) => {
+        const out = [];
+        let currentVal = 0;
+        for (const [i, ch] of m1.split("").entries()) {
+          currentVal |= (ch.charCodeAt(0) << (((2 - (i % 3)) * 8) + 8)) >>> 0;
+          if ((i + 1) % 3 === 0) {
+            out.push(currentVal);
+            currentVal = 0;
+          }
+        }
+        out.push(currentVal);
+        if (vFlag.length === 0) {
+          while (out.length < 5) { out.push(0); }
+          while (out.length > 5) { out.pop(); }
+        } else {
+          return `${out[0]}`;
+        }
+        return out.join(" ");
+      });
 
     if (!outFiles[file]) { outFiles[file] = ''; }
     outFiles[file] += `${line}\n`;

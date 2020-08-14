@@ -31,7 +31,7 @@ to compile the AI files back into the pac file.
 alternatively, you can right click on a folder or pac file and choose the command from
 the bottom of that menu!
 
-## [0.3.0] - Macros, Globals, and Named Variables/Constants!
+## [0.3.0] - Macros, Globals, Named Variables/Constants, and Helper Functions!
 
 So yeah I added a preprocessor. It's important to note that a `__preprocessed` folder will
 now be created whenever scripts are compiled. This is to assist with debugging.
@@ -117,4 +117,17 @@ variable names and constants that were used inside that macro, so after using th
 another file, you can also use `targetXDistance` and `targetYDistance` (and the others, but
 those `targetXDistance` and `targetYDistance` are the important ones)
 
+### Helper "Functions"
 
+there are a few things you can surround certain kinds of values with to convert them to a
+numeric or argument equivalent:
+
+- `color(0x[hex value here])`
+  - converts a hex value to a series of four values 0 through 255 representing red, green, blue, and alpha
+- `str("[string here]")`
+  - converts a string to a series of 5 numbers representing the text. Every 3 characters is 1 value.
+- `strv("[string here]")`
+  - converts a string of 3 characters **OR LESS** to a single number representing that text
+- `hex(0x[hex value here])`
+  - converts a hex number to a standard number. This is necessary if you want to use a hex value representation
+    of a number in your source code.

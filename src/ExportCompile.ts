@@ -85,7 +85,11 @@ export const Compile = async (uri?: vscode.Uri) => {
   if (!existsSync(join(targetFileDir, "out"))) { mkdirSync(join(targetFileDir, "out")); }
   copyFileSync(targetFile[0].path.substring(1), join(targetFileDir, "out", targetFileName));
 
-  await preprocess(inputFolder.path.substring(1));
+  const errors = await preprocess(inputFolder.path.substring(1));
+  if (errors) {
+    return vscode.window.showErrorMessage(errors.join("\n"));
+  }
+
   const out = execSync(join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
     "--compile",
     "--path",
@@ -98,7 +102,6 @@ export const Compile = async (uri?: vscode.Uri) => {
 
   console.log(out);
   if (out.length > 4) {
-    out.shift();
     out.shift();
     out.shift();
     out.shift();
