@@ -19,7 +19,7 @@ repository:
     patterns:
       - match: '\b(?:true|false)\b'
         name: keyword.other
-      - match: '\b(?:if|elif|endif|else)\b|^#include .+$|#let|#const|#macro|#endmacro|\b(?:strv?|color|hex)'
+      - match: '\b(?:if|elif|endif|else)\b|^#include .+$|#let|#const|#macro|#endmacro|#snippet|#endsnippet|\b(?:strv?|color|hex)'
         name: keyword.control
       - match: '\b(?:unk|id|str)\b'
         name: support.type

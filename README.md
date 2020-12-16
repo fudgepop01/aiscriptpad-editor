@@ -88,7 +88,7 @@ Here's one example that also uses named variables:
     targetXDistance (var13)
     targetYDistance (var14)
 */
-#macro CALC_TARGET_DISTANCES
+#macro CALC_TARGET_DISTANCES() // the () was added in 0.4.0
   #let targetXOffset = var9
   #let targetYOffset = var10
   #let targetXRange = var11
@@ -131,3 +131,54 @@ numeric or argument equivalent:
 - `hex(0x[hex value here])`
   - converts a hex number to a standard number. This is necessary if you want to use a hex value representation
     of a number in your source code.
+
+## [0.4.0] - Templated Macros
+
+Macros can now take arguments! That means you can make them do things like use different variables
+or even inline values! As such, **the syntax for defining macros has changed slightly since 0.3.0**:
+
+Here is how you can define and use a macro with templated parameters:
+
+```
+#macro TEMPLATED_MACRO(var1, amount)
+  #let tempVar = {var1}
+
+  // do stuff with tempVar
+#endmacro
+```
+
+> **NOTE:**
+>
+> It is important that you don't get *too* carried away and start treating macros like
+> standard functions! Each time you use a macro the full text is inserted. They were mainly made
+> to allow users to make use of all 10 "local" variables rather than make some convoluted system
+> involving lots of consistency.
+
+Anyway, enjoy!
+
+## [0.5.0] - Template Files & Snippets
+
+Now you have the ability to create and read from a folder named `shared` in the `include` directory!
+What this means is you're now able to define multiple things across multiple projects *including* code.
+For macros and globals, simply make `macros.as` and `globals.as` files within the `shared` directory. 
+For code, create a `templates` folder inside the `shared` folder and add whatever `.as` files you want to
+share across all projects.
+
+These template files can include things called `snippets` - they're basically the same thing as macros but 
+they're special. They take *no* arguments and are used inside the template files with `{TEMPLATE_NAME}`.
+To fill in these templates on a per-project basis, make a file of the same name within the project's directory.
+Here, you'll create a `TEMPLATE_NAME` snippet with `#snippet` and `#endsnippet`.
+
+in this case it would be:
+
+```
+#snippet TEMPLATE_NAME
+  // whatever code you want here
+#endsnippet
+```
+
+Even if you have template files, you can override them by just structuring a file of the same name as you normally would.
+(The key part it searches for is any line starting with `id `).
+
+Furthermore, any constants and macros defined in the shared `globals.as` and `macros.as` can be overwritten in a similar way.
+Just make a constant / macro of the same name and it'll automatically be overwritten!

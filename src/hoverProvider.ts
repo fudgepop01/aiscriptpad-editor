@@ -6,7 +6,10 @@ const generateProbabilityInfo = (high: number, low: number, max: number, min: nu
   const probabilities = CPULevelChart.map(levelValue => {
     const lowMultiplier = (levelValue < min) ? 1 : (levelValue - min) / (max - min);
     const highMultiplier = (levelValue > max) ? 1 : (max - levelValue) / (max - min);
-    return Math.round((lowMultiplier * low + highMultiplier * high) * 100) / 100;
+    const val = Math.round((lowMultiplier * low + highMultiplier * high) * 100) / 100;
+    if (val > 100) { return 100; }
+    else if (val < 0 || isNaN(val)) { return 0; }
+    else { return val; }
   });
 
   return `

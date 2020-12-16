@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { sep } from 'path';
-import { readdir, readFile } from 'fs';
+import { readdir, readFile, readdirSync } from 'fs';
 import { promisify } from 'util';
 
 const aReaddir = promisify(readdir);
@@ -9,7 +9,12 @@ const aReadFile = promisify(readFile);
 const includePath: string = vscode.workspace.getConfiguration("aiscriptpad").get("includepath") as string;
 let fullPath = includePath;
 if (includePath.startsWith('.')) {
-  fullPath = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor!.document.uri)?.uri.path + includePath.substring(1);
+  vscode.workspace.workspaceFolders?.map((folder) => {
+    const fPath = folder.uri.path;
+    if (readdirSync(fPath.substring(sep === "\\" ? fPath.indexOf("/") + 1 : 0)).includes(includePath.substring(2))) {
+      fullPath = folder.uri.path + includePath.substring(1);
+    }
+  });
 }
 if (sep === '\\') {
   fullPath = fullPath.substring(fullPath.indexOf('/') + 1); //.replace(/\//g, "\\ ");

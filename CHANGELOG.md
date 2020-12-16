@@ -1,5 +1,18 @@
 # Change Log
 
+## 0.5.0
+
+- added support for shared/templated files
+- fixed bug where arguments passed through macros wouldn't be processed properly, causing ambiguous errors
+
+## 0.4.0
+
+- added support for templated macros
+
+## 0.3.0
+
+- added macro support
+
 ## 0.2.3
 
 - added confirmation message when stuff compiles / exports successfully

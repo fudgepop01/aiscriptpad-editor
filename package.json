@@ -2,7 +2,7 @@
 	"name": "aiscriptpad-editor",
 	"displayName": "aiscriptpad editor",
 	"description": "makes the editing of aiscriptpad files much nicer",
-	"version": "0.3.1",
+	"version": "0.5.0",
 	"publisher": "fudgepops",
 	"repository": {
 		"url": "https://github.com/fudgepop01/aiscriptpad-editor"
