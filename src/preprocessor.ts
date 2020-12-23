@@ -191,14 +191,6 @@ export const preprocess = async (path: string) => {
       .replace(/hex\(0x([a-fA-F0-9]+)\)/g, (_, m1) => {
         return `${parseInt(m1, 16)}`;
       })
-      // .replace(/color\((\d+),? (\d+),? (\d+),? (\d+)\)/g, (_, r: string, g: string, b: string, a: string) => {
-      //   let rOut = parseInt(r);
-      //   let bOut = parseInt(b);
-      //   let gOut = parseInt(g);
-      //   let aOut = parseInt(a);
-      //   if (rOut > 255 || bOut > 255 || gOut > 255 || aOut > 255) { return "COLOR_ERROR(should be 0-255)"; }
-      //   return `${(rOut << 24 | gOut << 16 | bOut << 8 | aOut) >>> 0}`;
-      // })
       .replace(/color\(0x([a-fA-F0-9]{8})\)/g, (_, m1: string) => {
         const hex = parseInt(m1, 16);
         return `${(hex & 0xff000000) >>> 24} ${(hex & 0xff0000) >> 16} ${(hex & 0xff00) >> 8} ${hex & 0xff}`;
@@ -288,6 +280,7 @@ export const preprocess = async (path: string) => {
   }
 
   const files = await readdir(`${path}`);
+  const sharedSnippetFiles = await readdir(`${sharedPath}/shared/snippets`);
 
   if (files.includes("globals.as")) {
     const lines = (await readFile(`${path}/globals.as`, 'utf8')).split(/\r?\n/g);
@@ -341,10 +334,12 @@ export const preprocess = async (path: string) => {
 
       templates.splice(templates.indexOf(file), 1);
       const templateLines = (await readFile(`${sharedPath}/shared/templates/${file}`, 'utf8')).split(/\r?\n/g);
+      const sharedSnippets = (sharedSnippetFiles.includes(file)) ? (await readFile(`${sharedPath}/shared/snippets/${file}`, 'utf8')).split(/\r?\n/g) : [];
       const snippets: typeof macros = {};
+      const combinedLines = sharedSnippets.concat(lines);
       let currentSnippetName: undefined | string = undefined;
       let currentSnippetSpaces: undefined | string = undefined;
-      for (const [lineNum, line] of lines.entries()) {
+      for (const [lineNum, line] of combinedLines.entries()) {
         if (line.trim().startsWith("#snippet")) {
           const matches = line.match(/^(?<spaces>\s*)#snippet\s+(?<name>[a-zA-Z_]+)/)!;
           if (matches.groups!.name) {
