@@ -14,18 +14,14 @@ export const DefinitionProvider = (includeData: any): vscode.DefinitionProvider 
 
       const currentLineText = document.lineAt(position.line).text;
 
-      const jumpInstr = Object.values(includeData.commands).find((v: any) => v.realValue === "0x14") as any;
+      const gotoInstr = Object.values(includeData.commands).find((v: any) => v.realValue === "0x1C") as any;
       const seekInstr = Object.values(includeData.commands).find((v: any) => v.realValue === "0x5") as any;
       // const atkDiceRollInstr = Object.values(includeData).find((v: any) => v.realValue === "0x2A") as any;
 
-      let matcher = new RegExp(`(?<fullmatch>(?<type>${jumpInstr.label}|${seekInstr.label})\\s*(?<dest>[\\w\\d_]+)?)`, 'g');
+      let matcher = new RegExp(`(?<fullmatch>(?<type>${gotoInstr.label}|${seekInstr.label})\\s*(?<dest>[\\w\\d_]+)?)`, 'g');
       const labelMatchResults = matcher.exec(currentLineText);
       if (labelMatchResults !== null) {
-        const startLine =
-          (labelMatchResults.groups!.type === jumpInstr.label
-            && labelMatchResults.groups!.dest)
-            ? 0
-            : position.line;
+        const startLine = 0;
         let regexBuilder = '(?<fullmatch>label';
         regexBuilder +=
           (labelMatchResults.groups!.dest)

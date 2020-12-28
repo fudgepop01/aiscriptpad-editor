@@ -15,6 +15,7 @@ export const preprocess = async (path: string) => {
       arguments: string[]
     }
   } = {};
+  const scripts: {[key: string]: (...args: string[]) => string} = {};
   const outFiles: {[key: string]: string} = {};
   const errors: string[] = [];
   let currentScopeItems: {lets: {[key: string]: string}, constants: {[key: string]: string}} = {constants: {}, lets: {}};
@@ -117,7 +118,7 @@ export const preprocess = async (path: string) => {
   
           scopeStack.push({lets: {}, constants: {}});
           for (const [ind, ln] of line.split("\n").entries()) {
-            const processed = processLine(ln, `(${errStart}) > ${snippetName}`, ind);
+            const processed = processLine(ln, `(${errStart}) > ${snippetName}`, ind, localSnippets);
             if (processed) { procLines.push(processed); }
           }
           const parsedSnippetItems = scopeStack.pop();
@@ -133,6 +134,40 @@ export const preprocess = async (path: string) => {
           }
           return procLines.join('\n');
         }
+      }
+    }
+    for (const [scriptName, fn] of Object.entries(scripts)) {
+      if (line.trim().startsWith("$" + scriptName + "(")) {
+        const passedArgRegexRes = /\((?<args>.*)\)/.exec(line);
+        const scriptArgRegexRes = /\((?<args>.*)\)/.exec(fn.toString());
+        const passedArgs = (passedArgRegexRes?.groups?.args) ? passedArgRegexRes.groups.args.split(",").map(arg=>arg.trim()) : [];
+        const scriptArgs = (scriptArgRegexRes?.groups?.args) ? scriptArgRegexRes.groups.args.split(",").map(arg=>arg.trim()) : [];
+      
+        if (passedArgs.length !== scriptArgs.length) {
+          errors.push(`${errStart}script argument count mismatch!`)
+          return "error";
+        }
+
+        line = fn(...passedArgs);
+
+        const procLines: (string | undefined)[] = [];
+
+        scopeStack.push({lets: {}, constants: {}});
+        for (const [ind, ln] of line.split("\n").entries()) {
+          const processed = processLine(ln, `(${errStart}) > ${scriptName}`, ind);
+          if (processed) { procLines.push(processed); }
+        }
+        const parsedMacroItems = scopeStack.pop();
+        const ssTarget = scopeStack[scopeStack.length - 1];
+        ssTarget.lets = { ...ssTarget.lets, ...parsedMacroItems!.lets };
+        ssTarget.constants = { ...ssTarget.constants, ...parsedMacroItems!.constants };
+        updateScopeItems(); 
+
+        if (!file.startsWith("(")) {
+          if (!outFiles[file]) { outFiles[file] = ''; }
+          outFiles[file] += `${procLines.join('\n')}\n`;
+        }
+        return procLines.join('\n');
       }
     }
     for (const [macroName, parsedMacro] of Object.entries(macros)) {
@@ -248,6 +283,16 @@ export const preprocess = async (path: string) => {
       for (const [lineNum, line] of lines.entries()) {
         processLine(line.trim(), "globals.as", lineNum);
       }
+    }
+    if (files.includes("scripts.js")) {
+      let text = (await readFile(`${sharedPath}/shared/scripts.js`, 'utf8'));
+      text = text
+        .replace(/scripts/g, "$scripts")
+        .replace(/templates/g, "$templates")
+        .replace(/^export\s+const\s+([A-Za-z_][A-Za-z_0-9]*)\s*=\s*(\(.*\)).*/gm, "scripts.$1 = $2 => {")
+        .replace(/^export\s+function\s+([A-Za-z_][A-Za-z_0-9]*)\s*(\(.*\)).*/gm, "scripts.$1 = $2 => {")
+        .replace(/\$globals/g, "globals.constants");
+      eval(text);
     }
     if (files.includes("macros.as")) {
       const lines = (await readFile(`${sharedPath}/shared/macros.as`, 'utf8')).split(/\r?\n/g);
@@ -367,6 +412,9 @@ export const preprocess = async (path: string) => {
         processLine(line, file, lineNum, snippets);
       }
     } else {
+      if (lines.some(ln => ln.trim().startsWith("id ") && templates.indexOf(file) != -1)) {
+        templates.splice(templates.indexOf(file), 1);
+      }
       for (const [lineNum, line] of lines.entries()) {
         processLine(line, file, lineNum);
       }

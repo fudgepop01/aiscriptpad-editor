@@ -17,7 +17,7 @@ This extension adds the following features to vscode when editing those files:
 - autocompletion with argument support and documentation
 - hover documentation
 - jump to referenced label
-  - done by ctrl+clicking on `Seek` or `Jump` instructions
+  - done by ctrl+clicking on `Seek` or `Goto` instructions
 - syntax highlighting
 
 ## As of [0.2.0], this Extenison ALSO adds...
@@ -182,3 +182,51 @@ Even if you have template files, you can override them by just structuring a fil
 
 Furthermore, any constants and macros defined in the shared `globals.as` and `macros.as` can be overwritten in a similar way.
 Just make a constant / macro of the same name and it'll automatically be overwritten!
+
+## [0.6.0] - Custom Preprocessor Scripts!
+
+Now you can create your own custom preprocessing functions! 
+
+Make a file named `scripts.js` in the same place as `globals.as` and `macros.as` in the *shared* folder. In here you can create functions just as you normally would with javascript. Anything you want to use as a preprocessor function should be prefaced with the `export` keyword. 
+
+All parameters recieved will be of javascript type `string`. These functions should return a string. This return value will automatically be preprocessed - so no worries there. 
+
+```js
+export const testFunc = () => {
+  return `// this is the output of testFunc`;
+}
+
+export function argFunc(arg1) {
+  return `// you passed in: "${arg1}"`;
+}
+```
+
+You can access globally defined constants with a special `$globals` variable. This contains all the constants as key/value pairs, where the key is the constant name and the value is the constant value. The following will list out each defined global as well as its value in a line comment:
+
+```js
+export const listGlobals = () => {
+  let out = "";
+  for (const [key, val] of Object.entries($globals)) {
+    out += `// ${key}: ${val}\n`;
+  }
+  return out;
+}
+```
+
+Once defined, you can call the function with `$function_name_here()`. Ex.
+
+```
+$testFunc()
+
+$argFunc(hello world)
+```
+
+will get transformed into the following when you compile it:
+
+```
+// this is the output of testFunc
+
+// you passed in "hello world"
+```
+
+Use this to automate certain tasks that would otherwise be extremely tedious!
