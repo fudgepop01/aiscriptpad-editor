@@ -2,7 +2,7 @@
 	"name": "aiscriptpad-editor",
 	"displayName": "aiscriptpad editor",
 	"description": "makes the editing of aiscriptpad files much nicer",
-	"version": "0.5.2",
+	"version": "0.6.3",
 	"publisher": "fudgepops",
 	"repository": {
 		"url": "https://github.com/fudgepop01/aiscriptpad-editor"
@@ -16,7 +16,9 @@
 	"activationEvents": [
 		"onLanguage:aisp",
 		"onCommand:aiscriptpad-editor.export",
-		"onCommand:aiscriptpad-editor.compile"
+		"onCommand:aiscriptpad-editor.compile",
+		"onCommand:aiscriptpad-editor.batch-export",
+		"onCommand:aiscriptpad-editor.batch-compile"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -54,11 +56,19 @@
 		"commands": [
 			{
 				"command": "aiscriptpad-editor.export",
-				"title": "export data from pac file"
+				"title": "export data FROM pac file"
 			},
 			{
 				"command": "aiscriptpad-editor.compile",
-				"title": "compile AI to pac file"
+				"title": "compile AI TO pac file"
+			},
+			{
+				"command": "aiscriptpad-editor.batch-export",
+				"title": "batch export FROM pac files"
+			},
+			{
+				"command": "aiscriptpad-editor.batch-compile",
+				"title": "batch compile TO pac files"
 			}
 		],
 		"menus": {

@@ -1,10 +1,12 @@
 // TODO: give macros the ability to have arguments and call other macros
 
 import * as fs from 'fs';
-import { workspace } from 'vscode';
+import { commands, OutputChannel, window, workspace } from 'vscode';
 import { sep } from 'path';
 import { normalize } from 'path';
 const { readdir, readFile, writeFile, mkdir, unlink, access } = fs.promises;
+
+let outputChannel: OutputChannel;
 
 export const preprocess = async (path: string) => {
   const macros: {
@@ -21,6 +23,9 @@ export const preprocess = async (path: string) => {
   let currentScopeItems: {lets: {[key: string]: string}, constants: {[key: string]: string}} = {constants: {}, lets: {}};
   let globals: typeof currentScopeItems = {constants: {}, lets: {}};
   const scopeStack: Array<typeof currentScopeItems> = [];
+  if (outputChannel) outputChannel.dispose();
+  outputChannel = window.createOutputChannel("aiscriptpad debugger");
+  outputChannel.show();
 
   const errStartGen = (file: string, lineNum: number) => `preprocess error: ${file}; line ${lineNum}:\n`;
 
@@ -97,43 +102,46 @@ export const preprocess = async (path: string) => {
       return "";
     }
     else if (line.trim().startsWith("#const")) {
-      const matches = line.trim().match(/#const\s+(?<alias>[a-zA-Z_][a-zA-Z0-9_]+)\s*=\s*(?<value>-?[0-9]+(?:\.[0-9]+)?)/);
+      const matches = line.trim().match(/#const\s+(?<alias>[a-zA-Z_][a-zA-Z0-9_]+)\s*=\s*(?<value>.+)/);
       if (!matches!.groups!.alias) {
         errors.push(`${errStart}const must have a name`);
-      }
-      if (!matches!.groups!.value) {
-        errors.push(`${errStart}const must have a numeric value`);
       }
       if (isError) { return "error"; }
       if (file === "globals.as") { globals.constants[matches!.groups!.alias] = matches!.groups!.value; }
       else { addConstToScope(matches!.groups!); }
       return "";
     }
-    if (localSnippets) {
-      for (const [snippetName, parsedSnippet] of Object.entries(localSnippets)) {
-        if (line.trim().startsWith("{" + snippetName + "}")) {  
-          line = parsedSnippet.text;
-  
-          const procLines: (string | undefined)[] = [];
-  
-          scopeStack.push({lets: {}, constants: {}});
-          for (const [ind, ln] of line.split("\n").entries()) {
-            const processed = processLine(ln, `(${errStart}) > ${snippetName}`, ind, localSnippets);
-            if (processed) { procLines.push(processed); }
-          }
-          const parsedSnippetItems = scopeStack.pop();
-  
-          const ssTarget = scopeStack[scopeStack.length - 1];
-          ssTarget.lets = { ...ssTarget.lets, ...parsedSnippetItems!.lets };
-          ssTarget.constants = { ...ssTarget.constants, ...parsedSnippetItems!.constants };
-          updateScopeItems();
-  
-          if (!file.startsWith("(")) {
-            if (!outFiles[file]) { outFiles[file] = ''; }
-            outFiles[file] += `${procLines.join('\n')}\n`;
-          }
-          return procLines.join('\n');
+    if (localSnippets && line.trim().startsWith("{")) {
+      const snippetName = line.trim().substring(1, line.trim().indexOf("}"));
+      if (Object.keys(localSnippets).includes(snippetName)) {
+        const parsedSnippet = localSnippets[snippetName];
+
+        const line = parsedSnippet.text;
+
+        const procLines: (string | undefined)[] = [];
+        scopeStack.push({lets: {}, constants: {}});
+        for (const [ind, ln] of line.split("\n").entries()) {
+          const processed = processLine(ln, `(${errStart}) > ${snippetName}`, ind, localSnippets);
+          if (processed) { procLines.push(processed); }
         }
+        const parsedSnippetItems = scopeStack.pop();
+
+        const ssTarget = scopeStack[scopeStack.length - 1];
+        ssTarget.lets = { ...ssTarget.lets, ...parsedSnippetItems!.lets };
+        ssTarget.constants = { ...ssTarget.constants, ...parsedSnippetItems!.constants };
+        updateScopeItems();
+
+        if (!file.startsWith("(")) {
+          if (!outFiles[file]) { outFiles[file] = ''; }
+          outFiles[file] += `${procLines.join('\n')}\n`;
+        }
+        return procLines.join('\n');
+      } else {
+        if (!file.startsWith("(")) {
+          if (!outFiles[file]) { outFiles[file] = ''; }
+          outFiles[file] += `// ${line}\n`;
+        }
+        return "";
       }
     }
     for (const [scriptName, fn] of Object.entries(scripts)) {
@@ -148,13 +156,17 @@ export const preprocess = async (path: string) => {
           return "error";
         }
 
-        line = fn(...passedArgs);
-
+        try {
+          line = fn(...passedArgs);
+        } catch (e) {
+          errors.push(`${errStart}: ${scriptName}: ${e.message}`);
+          return "error";
+        }
         const procLines: (string | undefined)[] = [];
 
         scopeStack.push({lets: {}, constants: {}});
         for (const [ind, ln] of line.split("\n").entries()) {
-          const processed = processLine(ln, `(${errStart}) > ${scriptName}`, ind);
+          const processed = processLine(ln, `(${errStart}) > ${scriptName}`, ind, localSnippets);
           if (processed) { procLines.push(processed); }
         }
         const parsedMacroItems = scopeStack.pop();
@@ -291,6 +303,9 @@ export const preprocess = async (path: string) => {
         .replace(/templates/g, "$templates")
         .replace(/^export\s+const\s+([A-Za-z_][A-Za-z_0-9]*)\s*=\s*(\(.*\)).*/gm, "scripts.$1 = $2 => {")
         .replace(/^export\s+function\s+([A-Za-z_][A-Za-z_0-9]*)\s*(\(.*\)).*/gm, "scripts.$1 = $2 => {")
+        .replace(/require\((.+?)\)/g, `outputChannel.appendLine("imports are not currently supported")`)
+        .replace(/\beval/g, `outputChannel.appendLine("eval is not supported")`)
+        .replace(/console.log\((.+?)\)/g, `outputChannel.appendLine(JSON.stringify($1, null, 2))`)
         .replace(/\$globals/g, "globals.constants");
       eval(text);
     }
@@ -424,13 +439,41 @@ export const preprocess = async (path: string) => {
 
   for (const template of templates) {
     const lines = (await readFile(`${sharedPath}/shared/templates/${template}`, 'utf8')).split(/\r?\n/g);
+    const sharedSnippets = (sharedSnippetFiles.includes(template)) ? (await readFile(`${sharedPath}/shared/snippets/${template}`, 'utf8')).split(/\r?\n/g) : [];
+    const snippets: typeof macros = {};
+    const combinedLines = sharedSnippets.concat(lines);
+    let currentSnippetName: undefined | string = undefined;
+    let currentSnippetSpaces: undefined | string = undefined;
+    for (const [lineNum, line] of combinedLines.entries()) {
+      if (line.trim().startsWith("#snippet")) {
+        const matches = line.match(/^(?<spaces>\s*)#snippet\s+(?<name>[a-zA-Z_]+)/)!;
+        if (matches.groups!.name) {
+          currentSnippetName = matches.groups!.name;
+          snippets[matches.groups!.name] = {
+            text: '',
+            lets: {},
+            constants: {},
+            arguments: [],
+          };
+          if (matches.groups!.spaces || matches.groups!.spaces.length === 0) {
+            currentSnippetSpaces = matches.groups!.spaces;
+          }
+        }
+      } else if (currentSnippetName && line.trim().startsWith("#endsnippet")) {
+        currentSnippetName = undefined;
+        currentSnippetSpaces = undefined;
+      } else if (currentSnippetName) {
+        const contentLine = line.substring(currentSnippetSpaces!.length);
+        snippets[currentSnippetName].text += contentLine + '\n';
+      }
+    }
 
     scopeStack.push({
       lets: {},
       constants: {}
     });
     for (const [lineNum, line] of lines.entries()) {
-      processLine(line, template, lineNum);
+      processLine(line, template, lineNum, snippets);
     }
     scopeStack.pop();
   }

@@ -1,5 +1,34 @@
 # Change Log
 
+## 1.0.0
+
+### BREAKING CHANGES
+
+- updated the `AIScriptCLA` build to correctly handle exporting and compiling of etc files with more than one AI such as Popo (nana) and Wario (warioman).
+  - This means that you'll want to put the ai scripts (`----.AS`) in a folder titled `ai_[character name here]`
+  - for instance, for captain falcon, you would put your files in a folder titled `ai_captain`
+
+this also means that the size of the executable bundled with this extension has increased - now you only need the dotnetcore3.1 runtime which can be downloaded [here](https://dotnet.microsoft.com/download/dotnet-core/3.1).
+
+### New Additions
+
+- Batch export/compile commands accessible via the command palette. 
+  - For export you select the folders with a `.pac` file that you wish to extract the AI files from
+  - For compile you choose the folders with `ai_[character name]` folders alongside the `.pac` file for that character, *then* (optionally) choose a folder for the output of the files to go
+
+## 0.6.3
+
+- added a way to display output from console.log statements within scripts
+
+## 0.6.2
+
+- updated error handling to include support for script errors
+
+## 0.6.1
+
+- with the creation of scripts, constants may now have more utility. Therefor, I have removed the limitation specifying that they must be numeric.
+  - This means a const can now have whatever text you want after the `=` sign. Have fun!
+
 ## 0.6.0
 
 - added the ability to create custom javascript preprocessor scripts that can be executed with javascript

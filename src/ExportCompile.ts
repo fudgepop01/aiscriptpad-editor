@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, copyFileSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { pathToIncludes } from './getIncludeData';
 import { preprocess } from './preprocessor';
@@ -28,12 +28,27 @@ export const Export = async (uri?: vscode.Uri) => {
 
   vscode.window.showInformationMessage("select folder to write files to");
   const outFolder = await vscode.window.showOpenDialog({
-    defaultUri: pacPath,
+    defaultUri: vscode.Uri.parse(pacPath.path.substring(0, pacPath.path.lastIndexOf("/"))),
     canSelectFolders: true,
     canSelectFiles: false,
     canSelectMany: false
   });
   if (!outFolder) { return; }
+
+  console.log("==========");
+  console.log(pacPath.path);
+  console.log(outFolder[0].path);
+  
+
+  console.log(join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
+    "--export",
+    "--path",
+    `"${pacPath.path.substring(1)}"`,
+    "--out",
+    `"${outFolder[0].path.substring(1)}"`,
+    "--include",
+    `"${importPath}"`
+  ].join(' '));
 
   execSync(join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
     "--export",
@@ -111,3 +126,123 @@ export const Compile = async (uri?: vscode.Uri) => {
   };
 };
 
+export const BatchExport = async () => {
+  if (process.platform !== 'win32') {
+    vscode.window.showErrorMessage("Sorry! This feature is only available on windows platforms");
+    return;
+  }
+  const importPath = pathToIncludes;
+  vscode.window.showInformationMessage("select folders containing pac files");
+  const rootFolderPaths = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: true
+  });
+  if (!rootFolderPaths) { return; }
+  const failed = [];
+  for (const uri of rootFolderPaths) {
+    const files = readdirSync(uri.path.substring(1))
+      .filter((files) => files.endsWith(".pac"));
+    for (const file of files) {
+      const fullPath = `${uri.path.substring(1)}/${file}`;
+      try {
+        execSync(join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
+          "--export",
+          "--path",
+          `"${fullPath}"`,
+          "--out",
+          `"${uri.path.substring(1)}/"`,
+          "--include",
+          `"${importPath}"`
+        ].join(' '));
+      } catch (e) {
+        failed.push(file);
+      }
+    }
+  }
+
+  if (failed.length == 0) {
+    vscode.window.showInformationMessage("Batch-Exported Sucessfully!");
+  } else {
+    vscode.window.showErrorMessage(`The following files encountered issues while exporting: ${failed.join('" | "')}`);
+  }
+}
+
+export const BatchCompile = async () => {
+  if (process.platform !== 'win32') {
+    vscode.window.showErrorMessage("Sorry! This feature is only available on windows platforms");
+    return;
+  }
+  const importPath = pathToIncludes;
+  vscode.window.showInformationMessage("select folders containing folders named ai_*");
+  const rootFolderPaths = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: true
+  });
+  if (!rootFolderPaths) { return; }
+  vscode.window.showInformationMessage("select folder for resulting pac files");
+  const copyDirPath = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+  });
+  const failed = [];
+  const noPac = [];
+  const pacFiles = [];
+  for (const uri of rootFolderPaths) {
+    const files = readdirSync(uri.path.substring(1), {withFileTypes: true});
+    const aiFolders = files.filter((files) => files.name.startsWith("ai_") && files.isDirectory());
+    const pacFile = files.find((files) => !files.isDirectory() && files.name.endsWith(".pac"));
+    if (!pacFile) { 
+      noPac.push(uri.path.substring(uri.path.lastIndexOf("/") + 1)); 
+      continue; 
+    }
+
+    if (!existsSync(join(uri.path.substring(1), "out"))) { mkdirSync(join(uri.path.substring(1), "out")); }
+    const pacFilePath = join(uri.path.substring(1), "out", pacFile.name);
+    pacFiles.push(pacFilePath);
+    copyFileSync(join(uri.path.substring(1), pacFile.name), pacFilePath);
+
+    for (const folder of aiFolders) {
+      const fullPath = join(uri.path.substring(1), folder.name);
+      try {
+        const errors = await preprocess(fullPath);
+        if (errors) {
+          throw "preprocess error";
+        }
+
+        const out = execSync(join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
+          "--compile",
+          "--path",
+          `"${fullPath}/__preprocessed"`,
+          "--out",
+          `"${pacFilePath.replace(/\\/g, '/')}"`,
+          "--include",
+          `"${importPath}"`
+        ].join(" ")).toString('utf8').split('\n');
+      
+        if (out.length > 4) {
+          failed.push(folder);
+        }
+      } catch (e) {
+        failed.push(folder);
+        pacFiles.pop();
+        break;
+      }
+    }
+  }
+
+  if (copyDirPath) {
+    for (const pacFilePath of pacFiles) {
+      copyFileSync(pacFilePath, join(copyDirPath[0].path.substring(1), pacFilePath.substring(pacFilePath.lastIndexOf("\\"))));
+    }
+  }
+
+  if (failed.length == 0) {
+    vscode.window.showInformationMessage(`Batch-Compiled Sucessfully!${(copyDirPath) ? "Pacs copied to the selected folder" : ""}`);
+  } else {
+    vscode.window.showErrorMessage(`The following folders encountered issues while compiling: ${failed.join('" | "')}`);
+    if (copyDirPath) vscode.window.showInformationMessage("Pacs that succeeded were copied to the selected folder");
+  }
+}

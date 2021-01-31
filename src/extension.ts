@@ -4,7 +4,7 @@ import { generateHighlightProvider } from './generateHighlighting';
 import { HoverProvider } from './hoverProvider';
 import { DefinitionProvider } from './definitionProvider';
 import { CompletionProvider } from './completionProvider';
-import { Export, Compile } from './ExportCompile';
+import { Export, Compile, BatchExport, BatchCompile } from './ExportCompile';
 
 const tokenTypes = ['function', 'type', 'parameter', 'variable'];
 const legend = new vscode.SemanticTokensLegend(tokenTypes);
@@ -17,7 +17,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	const exportCommand = vscode.commands.registerCommand('aiscriptpad-editor.export', Export);
 	const compileCommand = vscode.commands.registerCommand('aiscriptpad-editor.compile', Compile);
-
+	const batchExportCommand = vscode.commands.registerCommand("aiscriptpad-editor.batch-export", BatchExport);
+	const batchCompileCommand = vscode.commands.registerCommand("aiscriptpad-editor.batch-compile", BatchCompile);
 
 	context.subscriptions.push(
 		semanticTokensProvider,
@@ -25,7 +26,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		definitionProvider,
 		completionProvider,
 		exportCommand,
-		compileCommand
+		compileCommand,
+		batchExportCommand,
+		batchCompileCommand
 	);
 }
 
