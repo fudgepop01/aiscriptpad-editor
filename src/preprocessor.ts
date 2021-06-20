@@ -242,8 +242,18 @@ export const preprocess = async (path: string) => {
         const hex = parseInt(m1, 16);
         return `${(hex & 0xff000000) >>> 24} ${(hex & 0xff0000) >> 16} ${(hex & 0xff00) >> 8} ${hex & 0xff}`;
       })
+      .replace(/calc\((.+?)\)/g, (_, m1: string) => {
+        const values = m1.split(" ");
+        let operation = "";
+        for (const value of values) {
+          if (!value.length) continue;
+          if (globals.constants[value]) operation += ` ${globals.constants[value]}`;
+          else operation += value
+        }
+        return (eval(operation)).toString();
+      })
       .replace(/str(v?)\("([\x00-\xFF]+)"\)/g, (_, vFlag: string, m1: string) => {
-        const out = [];
+        const out: any[] = [];
         let currentVal = 0;
         for (const [i, ch] of m1.split("").entries()) {
           currentVal |= (ch.charCodeAt(0) << (((2 - (i % 3)) * 8) + 8)) >>> 0;

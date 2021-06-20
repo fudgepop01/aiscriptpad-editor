@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.1.0
+
+- added `calc()` preprocessor instruction enabling for calculations to be made
+  - this can also contain numeric global values, allowing for things like one global value to be offset by another
+
 ## 1.0.0
 
 ### BREAKING CHANGES

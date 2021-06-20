@@ -110,7 +110,7 @@ export const Compile = async (uri?: vscode.Uri) => {
     "--path",
     `"${inputFolder.path.substring(1)}/__preprocessed"`,
     "--out",
-    `"${join(targetFileDir, "out", targetFileName).replace(/\\/g, '/')}"`,
+    `"${join(targetFileDir, "out", targetFileName).replace(/\\/g, '/').replace(/\r/g, '')}"`,
     "--include",
     `"${importPath}"`
   ].join(" ")).toString('utf8').split('\n');
@@ -139,7 +139,7 @@ export const BatchExport = async () => {
     canSelectMany: true
   });
   if (!rootFolderPaths) { return; }
-  const failed = [];
+  const failed: any[] = [];
   for (const uri of rootFolderPaths) {
     const files = readdirSync(uri.path.substring(1))
       .filter((files) => files.endsWith(".pac"));
@@ -187,9 +187,9 @@ export const BatchCompile = async () => {
     canSelectFolders: true,
     canSelectMany: false,
   });
-  const failed = [];
-  const noPac = [];
-  const pacFiles = [];
+  const failed: any[] = [];
+  const noPac: any[] = [];
+  const pacFiles: any[] = [];
   for (const uri of rootFolderPaths) {
     const files = readdirSync(uri.path.substring(1), {withFileTypes: true});
     const aiFolders = files.filter((files) => files.name.startsWith("ai_") && files.isDirectory());
