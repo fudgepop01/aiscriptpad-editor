@@ -9,6 +9,7 @@ const { readdir, readFile, writeFile, mkdir, unlink, access } = fs.promises;
 let outputChannel: OutputChannel;
 
 export const preprocess = async (path: string) => {
+  try {
   const macros: {
     [key: string]: {
       text: string,
@@ -508,4 +509,8 @@ export const preprocess = async (path: string) => {
   }
 
   return;
+  } catch (e) {
+    console.error(e);
+    return "error";
+  }
 }
