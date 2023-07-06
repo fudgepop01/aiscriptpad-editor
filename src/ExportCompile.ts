@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
-import { execSync } from 'child_process';
-import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'fs';
+import { exec, execSync } from 'child_process';
+import { mkdir, copyFile, readdir, access } from "fs/promises";
 import { join } from 'path';
 import { pathToIncludes } from './getIncludeData';
 import { preprocess } from './preprocessor';
+import { promisify } from 'util';
+// import {} from ;
+
+const execPromise = promisify(exec);
 
 export const Export = async (uri?: vscode.Uri) => {
   if (process.platform !== 'win32') {
@@ -63,6 +67,15 @@ export const Export = async (uri?: vscode.Uri) => {
   vscode.window.showInformationMessage("Exported Sucessfully!");
 };
 
+const exists = async (path) => {  
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const Compile = async (uri?: vscode.Uri) => {
   if (process.platform !== 'win32') {
     vscode.window.showErrorMessage("Sorry! This feature is only available on windows platforms");
@@ -97,15 +110,15 @@ export const Compile = async (uri?: vscode.Uri) => {
 
   const targetFileDir = targetFile[0].path.substring(1, targetFile[0].path.lastIndexOf('/'));
   const targetFileName = targetFile[0].path.substring(targetFile[0].path.lastIndexOf('/') + 1);
-  if (!existsSync(join(targetFileDir, "out"))) { mkdirSync(join(targetFileDir, "out")); }
-  copyFileSync(targetFile[0].path.substring(1), join(targetFileDir, "out", targetFileName));
+  if (!(await exists(join(targetFileDir, "out")))) { await mkdir(join(targetFileDir, "out")); }
+  await copyFile(targetFile[0].path.substring(1), join(targetFileDir, "out", targetFileName));
 
   const errors = await preprocess(inputFolder.path.substring(1));
   if (errors) {
     return vscode.window.showErrorMessage(errors.join("\n"));
   }
 
-  const out = execSync(join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
+  const command = join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
     "--compile",
     "--path",
     `"${inputFolder.path.substring(1)}/__preprocessed"`,
@@ -113,7 +126,9 @@ export const Compile = async (uri?: vscode.Uri) => {
     `"${join(targetFileDir, "out", targetFileName).replace(/\\/g, '/').replace(/\r/g, '')}"`,
     "--include",
     `"${importPath}"`
-  ].join(" ")).toString('utf8').split('\n');
+  ].join(" ");
+  console.log(command);
+  const out = execSync(command).toString('utf8').split("\n");
 
   console.log(out);
   if (out.length > 4) {
@@ -141,7 +156,7 @@ export const BatchExport = async () => {
   if (!rootFolderPaths) { return; }
   const failed: any[] = [];
   for (const uri of rootFolderPaths) {
-    const files = readdirSync(uri.path.substring(1))
+    const files = (await readdir(uri.path.substring(1)))
       .filter((files) => files.endsWith(".pac"));
     for (const file of files) {
       const fullPath = `${uri.path.substring(1)}/${file}`;
@@ -168,6 +183,10 @@ export const BatchExport = async () => {
   }
 }
 
+const processFolder = async () => {
+
+}
+
 export const BatchCompile = async () => {
   if (process.platform !== 'win32') {
     vscode.window.showErrorMessage("Sorry! This feature is only available on windows platforms");
@@ -189,53 +208,83 @@ export const BatchCompile = async () => {
   });
   const failed: any[] = [];
   const noPac: any[] = [];
-  const pacFiles: any[] = [];
+  const processedPacFiles: any[] = [];
+  const processedPacFilePaths: any[] = [];
+  const processes:  (() => Promise<void>)[] = [];
   for (const uri of rootFolderPaths) {
-    const files = readdirSync(uri.path.substring(1), {withFileTypes: true});
-    const aiFolders = files.filter((files) => files.name.startsWith("ai_") && files.isDirectory());
-    const pacFile = files.find((files) => !files.isDirectory() && files.name.endsWith(".pac"));
-    if (!pacFile) { 
-      noPac.push(uri.path.substring(uri.path.lastIndexOf("/") + 1)); 
-      continue; 
-    }
-
-    if (!existsSync(join(uri.path.substring(1), "out"))) { mkdirSync(join(uri.path.substring(1), "out")); }
-    const pacFilePath = join(uri.path.substring(1), "out", pacFile.name);
-    pacFiles.push(pacFilePath);
-    copyFileSync(join(uri.path.substring(1), pacFile.name), pacFilePath);
-
-    for (const folder of aiFolders) {
-      const fullPath = join(uri.path.substring(1), folder.name);
-      try {
-        const errors = await preprocess(fullPath);
-        if (errors) {
-          throw "preprocess error";
-        }
-
-        const out = execSync(join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
-          "--compile",
-          "--path",
-          `"${fullPath}/__preprocessed"`,
-          "--out",
-          `"${pacFilePath.replace(/\\/g, '/')}"`,
-          "--include",
-          `"${importPath}"`
-        ].join(" ")).toString('utf8').split('\n');
-      
-        if (out.length > 4) {
-          failed.push(folder);
-        }
-      } catch (e) {
-        failed.push(folder);
-        pacFiles.pop();
-        break;
+    processes.push(() => new Promise(async (resolve, reject) => {
+      const pacFiles: any[] = [];
+      pacFiles.length = 0;
+      const operations: (() => Promise<void>)[] = [];
+  
+      const files = await readdir(uri.path.substring(1), {withFileTypes: true});
+      const aiFolders = files.filter((files) => files.name.startsWith("ai_") && files.isDirectory());
+      pacFiles.push(...files.filter((files) => !files.isDirectory() && files.name.toLowerCase().includes("etc") && files.name.endsWith(".pac")));
+      if (pacFiles.length === 0) { 
+        noPac.push(uri.path.substring(uri.path.lastIndexOf("/") + 1)); 
+        resolve(); 
       }
-    }
+      processedPacFiles.push(...pacFiles);
+  
+      if (!(await exists(join(uri.path.substring(1), "out")))) { await mkdir(join(uri.path.substring(1), "out")); }
+      
+      for (const pacFile of pacFiles) {
+        const pacFilePath = join(uri.path.substring(1), "out", pacFile.name);
+        await copyFile(join(uri.path.substring(1), pacFile.name), pacFilePath);
+      }
+  
+      try {
+  
+        operations.push(() => new Promise(async (resolve, reject) => {
+          const fullPaths = pacFiles.map(f => {
+            return join(uri.path.substring(1), "out", f.name).replace(/\\/g, '/');
+          })
+          for (const folder of aiFolders) {
+            const fullPath = join(uri.path.substring(1), folder.name);
+            const errors = await preprocess(fullPath);
+            try {
+              if (errors) {
+                throw "preprocess error";
+              }
+              
+              const command = join(__dirname, "..", "AIScriptCLA", "AIScriptCLA.exe") + ' ' + [
+                "--compile",
+                "--path",
+                `"${fullPath}/__preprocessed"`,
+                "--out",
+                `"${fullPaths.join('" "')}"`,
+                "--include",
+                `"${importPath}"`
+              ].join(" ");
+              console.log(command);
+              const out = execSync(command).toString('utf8').split("\n");
+    
+              if (out.length > 4) {
+                out.shift();
+                out.shift();
+                out.shift();
+                failed.push(`${folder.name}: ${out.join(";;")}`);
+              }
+            } catch (e) {
+              failed.push(folder.name);
+            }
+          }
+          processedPacFilePaths.push(...fullPaths);
+          resolve();
+        }));
+        await Promise.all(operations.map(p => p()));
+      } catch (e) {
+        console.log("error thing");
+      }
+      resolve();
+    }));
   }
 
+  await Promise.all(processes.map(p => p()));
+
   if (copyDirPath) {
-    for (const pacFilePath of pacFiles) {
-      copyFileSync(pacFilePath, join(copyDirPath[0].path.substring(1), pacFilePath.substring(pacFilePath.lastIndexOf("\\"))));
+    for (const pacFilePath of processedPacFilePaths) {
+      await copyFile(pacFilePath, join(copyDirPath[0].path.substring(1), pacFilePath.substring(pacFilePath.lastIndexOf("/"))));
     }
   }
 

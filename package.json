@@ -2,7 +2,7 @@
 	"name": "aiscriptpad-editor",
 	"displayName": "aiscriptpad editor",
 	"description": "makes the editing of aiscriptpad files much nicer",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"publisher": "fudgepops",
 	"repository": {
 		"url": "https://github.com/fudgepop01/aiscriptpad-editor"
@@ -95,7 +95,7 @@
 	"devDependencies": {
 		"@types/glob": "^7.1.1",
 		"@types/mocha": "^7.0.2",
-		"@types/node": "^13.11.0",
+		"@types/node": "^18.15.11",
 		"@types/vscode": "^1.46.0",
 		"@typescript-eslint/eslint-plugin": "^2.30.0",
 		"@typescript-eslint/parser": "^2.30.0",

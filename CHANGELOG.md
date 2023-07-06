@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.1.2
+
+- fixed snippets not going through if there is a number in them
+  - this would explain a lot of my own pain and suffering with AI mods lmao
+
 ## 1.1.0
 
 - added `calc()` preprocessor instruction enabling for calculations to be made

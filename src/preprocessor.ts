@@ -298,7 +298,7 @@ export const preprocess = async (path: string) => {
   
   if (await (await readdir(`${sharedPath}`)).includes('shared')) {
     const files = await readdir(`${sharedPath}/shared`);
-    if (files.includes('templates')) {
+    if (!path.includes("common") && files.includes('templates')) {
       templates = await readdir(`${sharedPath}/shared/templates`);
     }
     if (files.includes('globals.as')) {
@@ -412,7 +412,7 @@ export const preprocess = async (path: string) => {
       let currentSnippetSpaces: undefined | string = undefined;
       for (const [lineNum, line] of combinedLines.entries()) {
         if (line.trim().startsWith("#snippet")) {
-          const matches = line.match(/^(?<spaces>\s*)#snippet\s+(?<name>[a-zA-Z_]+)/)!;
+          const matches = line.match(/^(?<spaces>\s*)#snippet\s+(?<name>[a-zA-Z0-9_]+)/)!;
           if (matches.groups!.name) {
             currentSnippetName = matches.groups!.name;
             snippets[matches.groups!.name] = {
@@ -457,7 +457,7 @@ export const preprocess = async (path: string) => {
     let currentSnippetSpaces: undefined | string = undefined;
     for (const [lineNum, line] of combinedLines.entries()) {
       if (line.trim().startsWith("#snippet")) {
-        const matches = line.match(/^(?<spaces>\s*)#snippet\s+(?<name>[a-zA-Z_]+)/)!;
+        const matches = line.match(/^(?<spaces>\s*)#snippet\s+(?<name>[a-zA-Z0-9_]+)/)!;
         if (matches.groups!.name) {
           currentSnippetName = matches.groups!.name;
           snippets[matches.groups!.name] = {
@@ -511,6 +511,6 @@ export const preprocess = async (path: string) => {
   return;
   } catch (e) {
     console.error(e);
-    return "error";
+    return [(e as Error).message];
   }
 }
